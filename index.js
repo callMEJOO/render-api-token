@@ -4,10 +4,10 @@ const app = express();
 
 /**
  * GET /api/token
- * Render يعمل:
- * 1- POST credentials
- * 2- GET session
- * 3- يرجع appToken
+ * Render يعمل في الباك:
+ * POST /auth/callback/credentials
+ * GET  /api/session
+ * ويرجع appToken
  */
 app.get("/api/token", async (req, res) => {
   try {
@@ -15,11 +15,11 @@ app.get("/api/token", async (req, res) => {
     const password = process.env.LOGIN_PASSWORD;
 
     if (!email || !password) {
-      return res.status(500).json({ error: "env not set" });
+      return res.status(500).json({ error: "ENV_NOT_SET" });
     }
 
-    // ===== 1️⃣ LOGIN =====
-    const loginRes = await fetch(
+    // ===== 1) LOGIN =====
+    const loginResponse = await fetch(
       "https://astra.app/auth/callback/credentials",
       {
         method: "POST",
@@ -40,13 +40,13 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    const cookies = loginRes.headers.get("set-cookie");
+    const cookies = loginResponse.headers.get("set-cookie");
     if (!cookies) {
-      return res.status(500).json({ error: "login failed" });
+      return res.status(500).json({ error: "LOGIN_FAILED" });
     }
 
-    // ===== 2️⃣ GET SESSION =====
-    const sessionRes = await fetch(
+    // ===== 2) GET SESSION =====
+    const sessionResponse = await fetch(
       "https://astra.app/api/session",
       {
         headers: {
@@ -59,19 +59,22 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    const source = await sessionRes.text();
+    const source = await sessionResponse.text();
 
-    // ===== 3️⃣ PARSE appToken =====
+    // ===== 3) PARSE appToken =====
     const match = source.match(/appToken":"([^"]+)"/);
+
     if (!match) {
-      return res.status(500).json({ error: "token not found" });
+      return res.status(500).json({ error: "TOKEN_NOT_FOUND" });
     }
 
+    // ===== 4) RETURN TOKEN =====
     res.json({
       appToken: match[1]
     });
+
   } catch (err) {
-    res.status(500).json({ error: "internal error" });
+    res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
 
