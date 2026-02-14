@@ -2,12 +2,20 @@ import express from "express";
 
 const app = express();
 
+/**
+ * GET /api/token
+ * Render يقلد المتصفح 100%
+ */
 app.get("/api/token", async (req, res) => {
   try {
     const email = process.env.LOGIN_EMAIL;
     const password = process.env.LOGIN_PASSWORD;
 
-    // 1️⃣ LOGIN (سيب redirect افتراضي)
+    if (!email || !password) {
+      return res.status(500).json({ error: "ENV_NOT_SET" });
+    }
+
+    // ===== 1️⃣ LOGIN =====
     const loginRes = await fetch(
       "https://astra.app/auth/callback/credentials",
       {
@@ -28,10 +36,17 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    // ناخد كل الكوكيز
-    const cookies = loginRes.headers.get("set-cookie");
+    // ===== 2️⃣ جمع الكوكيز =====
+    const rawCookies = loginRes.headers.getSetCookie?.() || [];
+    const cookieHeader = rawCookies
+      .map(c => c.split(";")[0])
+      .join("; ");
 
-    // 2️⃣ GET SESSION
+    if (!cookieHeader) {
+      return res.status(500).json({ error: "NO_COOKIES" });
+    }
+
+    // ===== 3️⃣ GET SESSION =====
     const sessionRes = await fetch(
       "https://astra.app/api/session",
       {
@@ -40,17 +55,26 @@ app.get("/api/token", async (req, res) => {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
           "Accept": "*/*",
           "Pragma": "no-cache",
-          "Cookie": cookies || ""
+          "Cookie": cookieHeader
         }
       }
     );
 
     const source = await sessionRes.text();
 
-    // 🔴 نرجّع الرد كامل عشان نشوفه
+    // ===== 4️⃣ PARSE appToken =====
+    const match = source.match(/appToken":"([^"]+)"/);
+
+    if (!match) {
+      // لو لسه null نبعته كامل للتشخيص
+      return res.status(500).json({
+        error: "TOKEN_NOT_FOUND",
+        sessionResponse: source
+      });
+    }
+
     res.json({
-      debug: true,
-      sessionResponse: source
+      appToken: match[1]
     });
 
   } catch (err) {
