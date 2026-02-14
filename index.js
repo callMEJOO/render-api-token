@@ -2,16 +2,20 @@ import express from "express";
 
 const app = express();
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 app.get("/api/token", async (req, res) => {
   try {
     const email = process.env.LOGIN_EMAIL;
     const password = process.env.LOGIN_PASSWORD;
 
-    // 1️⃣ LOGIN
+    if (!email || !password) {
+      return res.send(
+        `{"appToken":"ERROR","status":"env_not_set"}`
+      );
+    }
+
+    // ===== REQUEST 1: LOGIN =====
     const loginRes = await fetch(
       "https://astra.app/auth/callback/credentials",
       {
@@ -32,20 +36,22 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    // جمع الكوكيز
+    // ===== جمع الكوكيز =====
     const rawCookies = loginRes.headers.getSetCookie?.() || [];
     const cookieHeader = rawCookies
       .map(c => c.split(";")[0])
       .join("; ");
 
     if (!cookieHeader) {
-      return res.status(500).json({ error: "NO_COOKIES" });
+      return res.send(
+        `{"appToken":"ERROR","status":"login_failed"}`
+      );
     }
 
-    // ⏳ 2️⃣ DELAY مهم جدًا
+    // ===== DELAY مهم =====
     await sleep(1500);
 
-    // 3️⃣ GET SESSION
+    // ===== REQUEST 2: SESSION =====
     const sessionRes = await fetch(
       "https://astra.app/api/session",
       {
@@ -61,22 +67,26 @@ app.get("/api/token", async (req, res) => {
 
     const source = await sessionRes.text();
 
-    // 4️⃣ PARSE TOKEN
+    // ===== PARSE appToken =====
     const match = source.match(/appToken":"([^"]+)"/);
 
     if (!match) {
-      return res.status(500).json({
-        error: "TOKEN_NOT_FOUND",
-        sessionResponse: source
-      });
+      return res.send(
+        `{"appToken":"ERROR","status":"token_not_found"}`
+      );
     }
 
-    res.json({
-      appToken: match[1]
-    });
+    const token = match[1];
+
+    // ===== RESPONSE متوافق مع PARSE =====
+    res.send(
+      `{"appToken":"${token}","status":"ok"}`
+    );
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.send(
+      `{"appToken":"ERROR","status":"internal_error"}`
+    );
   }
 });
 
