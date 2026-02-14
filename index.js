@@ -2,16 +2,21 @@ import express from "express";
 
 const app = express();
 
-// =========================
-// 1️⃣ LOGIN ENDPOINT
-// =========================
-app.get("/api/login", async (req, res) => {
+/**
+ * GET /api/token
+ * يعمل:
+ * 1- POST login
+ * 2- GET session
+ * 3- يرجع appToken فقط
+ */
+app.get("/api/token", async (req, res) => {
   try {
     const EMAIL = process.env.LOGIN_EMAIL;
     const PASS  = process.env.LOGIN_PASSWORD;
 
-    const loginRes = await fetch(
-      "https://astra.app/auth/callback/credentials?",
+    // ===== REQUEST 1: LOGIN =====
+    await fetch(
+      "https://astra.app/auth/callback/credentials",
       {
         method: "POST",
         headers: {
@@ -28,36 +33,7 @@ app.get("/api/login", async (req, res) => {
       }
     );
 
-    const body = await loginRes.text();
-
-    // نرجّع نتيجة اللوجين الحقيقية
-    res.send(
-      JSON.stringify(
-        {
-          status: loginRes.status,
-          body: body
-        },
-        null,
-        2
-      )
-    );
-
-  } catch (err) {
-    res.send(
-      JSON.stringify(
-        { error: err.message },
-        null,
-        2
-      )
-    );
-  }
-});
-
-// =========================
-// 2️⃣ TOKEN ENDPOINT
-// =========================
-app.get("/api/token", async (req, res) => {
-  try {
+    // ===== REQUEST 2: SESSION =====
     const sessionRes = await fetch(
       "https://astra.app/api/session",
       {
@@ -71,27 +47,25 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    const body = await sessionRes.text();
+    const source = await sessionRes.text();
 
-    // نرجّع نتيجة التوكن الحقيقية
+    // ===== PARSE appToken (زي أداتك بالظبط) =====
+    const match = source.match(/appToken":"([^"]+)",/);
+
+    if (!match) {
+      return res.send(
+        `{"appToken":"ERROR","raw":${JSON.stringify(source)}}`
+      );
+    }
+
+    // ===== RESPONSE متوافق مع PARSE =====
     res.send(
-      JSON.stringify(
-        {
-          status: sessionRes.status,
-          body: body
-        },
-        null,
-        2
-      )
+      `{"appToken":"${match[1]}","status":"ok"}`
     );
 
   } catch (err) {
     res.send(
-      JSON.stringify(
-        { error: err.message },
-        null,
-        2
-      )
+      `{"appToken":"ERROR","status":"exception"}`
     );
   }
 });
