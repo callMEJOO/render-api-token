@@ -2,24 +2,13 @@ import express from "express";
 
 const app = express();
 
-/**
- * GET /api/token
- * Render يعمل في الباك:
- * POST /auth/callback/credentials
- * GET  /api/session
- * ويرجع appToken
- */
 app.get("/api/token", async (req, res) => {
   try {
     const email = process.env.LOGIN_EMAIL;
     const password = process.env.LOGIN_PASSWORD;
 
-    if (!email || !password) {
-      return res.status(500).json({ error: "ENV_NOT_SET" });
-    }
-
-    // ===== 1) LOGIN =====
-    const loginResponse = await fetch(
+    // 1️⃣ LOGIN (سيب redirect افتراضي)
+    const loginRes = await fetch(
       "https://astra.app/auth/callback/credentials",
       {
         method: "POST",
@@ -35,46 +24,37 @@ app.get("/api/token", async (req, res) => {
           encodeURIComponent(email) +
           "&password=" +
           encodeURIComponent(password) +
-          "&callbackUrl=%2Fexplore",
-        redirect: "manual"
+          "&callbackUrl=%2Fexplore"
       }
     );
 
-    const cookies = loginResponse.headers.get("set-cookie");
-    if (!cookies) {
-      return res.status(500).json({ error: "LOGIN_FAILED" });
-    }
+    // ناخد كل الكوكيز
+    const cookies = loginRes.headers.get("set-cookie");
 
-    // ===== 2) GET SESSION =====
-    const sessionResponse = await fetch(
+    // 2️⃣ GET SESSION
+    const sessionRes = await fetch(
       "https://astra.app/api/session",
       {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
           "Accept": "*/*",
           "Pragma": "no-cache",
-          "Cookie": cookies
+          "Cookie": cookies || ""
         }
       }
     );
 
-    const source = await sessionResponse.text();
+    const source = await sessionRes.text();
 
-    // ===== 3) PARSE appToken =====
-    const match = source.match(/appToken":"([^"]+)"/);
-
-    if (!match) {
-      return res.status(500).json({ error: "TOKEN_NOT_FOUND" });
-    }
-
-    // ===== 4) RETURN TOKEN =====
+    // 🔴 نرجّع الرد كامل عشان نشوفه
     res.json({
-      appToken: match[1]
+      debug: true,
+      sessionResponse: source
     });
 
   } catch (err) {
-    res.status(500).json({ error: "INTERNAL_ERROR" });
+    res.status(500).json({ error: err.message });
   }
 });
 
