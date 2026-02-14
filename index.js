@@ -2,14 +2,14 @@ import express from "express";
 
 const app = express();
 
-app.get("/api/token", async (req, res) => {
+// =========================
+// 1️⃣ LOGIN ENDPOINT
+// =========================
+app.get("/api/login", async (req, res) => {
   try {
     const EMAIL = process.env.LOGIN_EMAIL;
     const PASS  = process.env.LOGIN_PASSWORD;
 
-    // ======================
-    // REQUEST 1: LOGIN
-    // ======================
     const loginRes = await fetch(
       "https://astra.app/auth/callback/credentials?",
       {
@@ -28,13 +28,36 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    const loginStatus = loginRes.status;
-    const loginHeaders = Object.fromEntries(loginRes.headers.entries());
-    const loginBody = await loginRes.text();
+    const body = await loginRes.text();
 
-    // ======================
-    // REQUEST 2: SESSION
-    // ======================
+    // نرجّع نتيجة اللوجين الحقيقية
+    res.send(
+      JSON.stringify(
+        {
+          status: loginRes.status,
+          body: body
+        },
+        null,
+        2
+      )
+    );
+
+  } catch (err) {
+    res.send(
+      JSON.stringify(
+        { error: err.message },
+        null,
+        2
+      )
+    );
+  }
+});
+
+// =========================
+// 2️⃣ TOKEN ENDPOINT
+// =========================
+app.get("/api/token", async (req, res) => {
+  try {
     const sessionRes = await fetch(
       "https://astra.app/api/session",
       {
@@ -48,26 +71,14 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    const sessionStatus = sessionRes.status;
-    const sessionHeaders = Object.fromEntries(sessionRes.headers.entries());
-    const sessionBody = await sessionRes.text();
+    const body = await sessionRes.text();
 
-    // ======================
-    // PRINT EVERYTHING
-    // ======================
+    // نرجّع نتيجة التوكن الحقيقية
     res.send(
       JSON.stringify(
         {
-          login: {
-            status: loginStatus,
-            headers: loginHeaders,
-            body: loginBody
-          },
-          session: {
-            status: sessionStatus,
-            headers: sessionHeaders,
-            body: sessionBody
-          }
+          status: sessionRes.status,
+          body: body
         },
         null,
         2
