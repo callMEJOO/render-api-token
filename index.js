@@ -2,19 +2,16 @@ import express from "express";
 
 const app = express();
 
-/**
- * GET /api/token
- * يعمل:
- * 1- POST login
- * 2- GET session
- * 3- يرجع appToken فقط
- */
-app.get("/api/token", async (req, res) => {
-  try {
-    const EMAIL = process.env.LOGIN_EMAIL;
-    const PASS  = process.env.LOGIN_PASSWORD;
+// flag بسيط للربط
+let DID_LOGIN = false;
 
-    // ===== REQUEST 1: LOGIN =====
+/**
+ * =========================
+ * 1️⃣ REQUEST LOGIN (الأصلي)
+ * =========================
+ */
+app.get("/api/original-login", async (req, res) => {
+  try {
     await fetch(
       "https://astra.app/auth/callback/credentials",
       {
@@ -27,13 +24,33 @@ app.get("/api/token", async (req, res) => {
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body:
-          "email=" + encodeURIComponent(EMAIL) +
-          "&password=" + encodeURIComponent(PASS) +
+          "email=" + encodeURIComponent(process.env.LOGIN_EMAIL) +
+          "&password=" + encodeURIComponent(process.env.LOGIN_PASSWORD) +
           "&callbackUrl=%2Fexplore"
       }
     );
 
-    // ===== REQUEST 2: SESSION =====
+    DID_LOGIN = true;
+
+    res.send(`{"login":"ok"}`);
+  } catch (err) {
+    res.send(`{"login":"error"}`);
+  }
+});
+
+/**
+ * =========================
+ * 2️⃣ REQUEST SESSION / TOKEN (الأصلي)
+ * =========================
+ */
+app.get("/api/original-token", async (req, res) => {
+  if (!DID_LOGIN) {
+    return res.send(
+      `{"appToken":"ERROR","status":"login_not_called"}`
+    );
+  }
+
+  try {
     const sessionRes = await fetch(
       "https://astra.app/api/session",
       {
@@ -42,14 +59,15 @@ app.get("/api/token", async (req, res) => {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36",
           "Pragma": "no-cache",
-          "Accept": "*/*"
+          "Accept": "*/*",
+          "Content-Type": "application/x-www-form-urlencoded"
         }
       }
     );
 
     const source = await sessionRes.text();
 
-    // ===== PARSE appToken (زي أداتك بالظبط) =====
+    // ===== PARSE زي ما عندك =====
     const match = source.match(/appToken":"([^"]+)",/);
 
     if (!match) {
@@ -58,7 +76,6 @@ app.get("/api/token", async (req, res) => {
       );
     }
 
-    // ===== RESPONSE متوافق مع PARSE =====
     res.send(
       `{"appToken":"${match[1]}","status":"ok"}`
     );
