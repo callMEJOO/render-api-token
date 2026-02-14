@@ -1,7 +1,6 @@
 import express from "express";
 
 const app = express();
-
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 app.get("/api/token", async (req, res) => {
@@ -15,7 +14,7 @@ app.get("/api/token", async (req, res) => {
       );
     }
 
-    // ===== REQUEST 1: LOGIN =====
+    // ===== REQUEST 1: LOGIN (FORM) =====
     const loginRes = await fetch(
       "https://astra.app/auth/callback/credentials",
       {
@@ -36,7 +35,7 @@ app.get("/api/token", async (req, res) => {
       }
     );
 
-    // ===== جمع الكوكيز =====
+    // جمع الكوكيز
     const rawCookies = loginRes.headers.getSetCookie?.() || [];
     const cookieHeader = rawCookies
       .map(c => c.split(";")[0])
@@ -48,17 +47,19 @@ app.get("/api/token", async (req, res) => {
       );
     }
 
-    // ===== DELAY مهم =====
+    // ⏳ DELAY
     await sleep(1500);
 
-    // ===== REQUEST 2: SESSION =====
+    // ===== REQUEST 2: SESSION (JSON) =====
     const sessionRes = await fetch(
       "https://astra.app/api/session",
       {
+        method: "GET",
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-          "Accept": "*/*",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
           "Pragma": "no-cache",
           "Cookie": cookieHeader
         }
