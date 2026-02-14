@@ -24,7 +24,7 @@ HEADERS = {
 # =========================
 # REQUEST 1: LOGIN
 # =========================
-login_url = "https://mysite.app/auth/callback/credentials"
+login_url = "https://astra.app/auth/callback/credentials"
 login_data = {
     "email": EMAIL,
     "password": PASSWORD,
@@ -46,7 +46,7 @@ print("LOGIN STATUS:", login_response.status_code)
 # =========================
 # REQUEST 2: SESSION
 # =========================
-session_url = "https://mysite.app/api/session"
+session_url = "https://astra.app/api/session"
 
 session_headers = HEADERS.copy()
 session_headers["Content-Type"] = "application/x-www-form-urlencoded"
